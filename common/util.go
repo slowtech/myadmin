@@ -14,7 +14,6 @@ func FileExists(filename string) bool {
 	return exist
 }
 
-}
 
 func FileNotExistsExit(filename string) {
         finfo,err := os.Stat(filename)

@@ -1,16 +1,17 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
+        "github.com/spf13/cobra"
         "fmt"
         //"reflect"
         "os"
-        "strings"
-        "time"
-        "myadmin/common"
-        "regexp"
+        "github.com/slowtech/myadmin/common"
         "html/template"
+        "github.com/slowtech/myadmin/mysql"
+        "encoding/json"
+        "time"
 )
+
 
 const temp = `
 <!DOCTYPE html>
@@ -122,26 +123,26 @@ table {
 <table class="bordered">
     <thead>
     <tr>
-        <th style="width:4%">Rank</th>        
-        <th style="width:7%">Response time</th>
-        <th style="width:6%">Response ratio</th>
+        <th style="width:5%">Rank</th>        
+        <th style="width:8%">Response time</th>
+        <th style="width:7%">Response ratio</th>
         <th style="width:5%">Calls</th>        
         <th style="width:6%">R/Call</th>
-        <th style="width:15%">QueryId</th>
+        <th style="width:14%">QueryId</th>
         <th style="width:44%">Example</th>
-	<th style="width:13%">Remark</th>
+	<th style="width:11%">Remark</th>
     </tr>
     </thead>
 	{{range .slowlogs}}
     <tr>
-        <td style="width:4%">{{ .Rank}}</td>        
-        <td style="width:7%">{{ .Response_time}}</td>
-        <td style="width:6%">{{ .Response_ratio}}</td>
+        <td style="width:5%">{{ .Rank}}</td>        
+        <td style="width:8%">{{ .Response_time}}</td>
+        <td style="width:7%">{{ .Response_ratio}}</td>
 	<td style="width:5%">{{ .Calls}}</td>        
         <td style="width:6%">{{ .R_Call}}</td>
-        <td style="width:15%">{{ .QueryId}}</td>
+        <td style="width:14%">{{ .QueryId}}</td>
         <td style="width:44%">{{ .Example}}</td>
-	<td style="width:13%"> </td>   
+	<td style="width:11%"> </td>   
     </tr>  
     {{end}}	
 </table>
@@ -164,6 +165,7 @@ var (
       	slowlog string
       	all bool
       	yesterday bool
+        //output string
 )
 
 func init() {
@@ -174,13 +176,39 @@ func init() {
         slowlogCmd.Flags().StringVarP(&until, "until", "", "", "Parse only queries older than this value,YYYY-MM-DD [HH:MM:SS]")
         slowlogCmd.Flags().BoolVarP(&all, "all", "a", false, "Parse the whole slowlog")
         slowlogCmd.Flags().BoolVarP(&yesterday, "yesterday", "y",true, "Parse yesterday's slowlog")
+        //slowlogCmd.Flags().StringVarP(&output, "o", "", "")
         slowlogCmd.MarkFlagRequired("slowlog")
 }
 
 func GetSlowLog(cmd *cobra.Command,args []string) {
    	ptQueryDigestCmd := checkArgs()
    	fmt.Println(ptQueryDigestCmd)
-   	parseSlowLog(ptQueryDigestCmd)
+   	slowlogResult :=mysql.ParseSlowLog(ptQueryDigestCmd)
+        type slowlog struct {
+        	Rank string
+                Response_time string
+                Response_ratio string
+                Calls string
+                R_Call string
+                QueryId string
+                Example string
+        }
+
+        //将二维数组转化为json
+        slowlogs := []slowlog{}
+
+        json.Unmarshal(slowlogResult, &slowlogs)
+        fmt.Println(slowlogs)
+        
+       	now := time.Now().Format("2006-01-02 15:04:05")
+
+        var report = template.Must(template.New("slowlog").Parse(temp))
+        report.Execute(os.Stdout,map[string]interface{}{"slowlogs":slowlogs,"now":now})
+        //templates := template.Must(template.ParseFiles("cmd/slowlog.html"))
+        //err = templates.ExecuteTemplate(os.Stdout, "slowlog.html", map[string]interface{}{"slowlogs":slowlogs,"now":now})
+   	//if err != nil {
+        //	fmt.Println("Cannot Get View ", err)
+    	//}
 }
 
 
@@ -215,7 +243,7 @@ func checkArgs() []string {
         return ptQueryDigestCmd
   
 }
-
+/*
 func parseSlowLog(ptQueryDigestCmd []string){
 	slowLog,err := common.Run_cmd(common.Which("perl"), ptQueryDigestCmd)
     	if err != nil {
@@ -288,15 +316,5 @@ func parseSlowLog(ptQueryDigestCmd []string){
             slowlogs = append(slowlogs,slowlogrecord)
         }
         fmt.Println(slowlogs,now)
-        var report = template.Must(template.New("slowlog").Parse(temp))
-        report.Execute(os.Stdout,map[string]interface{}{"slowlogs":slowlogs,"now":now})
-        /*
-        templates := template.Must(template.ParseFiles("cmd/slowlog.html"))
-        err = templates.ExecuteTemplate(os.Stdout, "slowlog.html", map[string]interface{}{"slowlogs":slowlogs,"now":now})
-   	if err != nil {
-        	fmt.Println("Cannot Get View ", err)
-    	}
-        */
 }
-
-
+*/
