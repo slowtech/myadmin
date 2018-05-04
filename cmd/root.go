@@ -9,7 +9,6 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "myadmin",
-	Short: "Installs multiple MySQL servers on the same host",
 	Long: `myadmin provides a comprehensive way to manage MySQL`,
 	Version: "0.1",
 }
