@@ -7,11 +7,13 @@ import (
 )
 
 func FileExists(filename string) bool {
-	_,err := os.Stat(filename)
-	if os.IsNotExist(err) {
-    	    return false
+	var exist = true
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		exist = false
 	}
-	return true
+	return exist
+}
+
 }
 
 func FileNotExistsExit(filename string) {
@@ -28,4 +30,12 @@ func Which(command string) string {
 		return path
 	}
 	return ""
+}
+
+func Run_cmd(c string, args []string) (string,error){
+	cmd := exec.Command(c, args...)
+	var out []byte
+	var err error
+	out, err = cmd.Output()
+	return string(out),err
 }
