@@ -1,7 +1,7 @@
 package main
 
 import (
-	"myadmin/cmd"
+	"github.com/slowtech/myadmin/cmd"
 )
 
 func main() {

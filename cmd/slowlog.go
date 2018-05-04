@@ -10,6 +10,7 @@ import (
         "github.com/slowtech/myadmin/mysql"
         "encoding/json"
         "time"
+        "bufio"
 )
 
 
@@ -126,9 +127,9 @@ table {
         <th style="width:5%">Rank</th>        
         <th style="width:8%">Response time</th>
         <th style="width:7%">Response ratio</th>
-        <th style="width:5%">Calls</th>        
+        <th style="width:6%">Calls</th>        
         <th style="width:6%">R/Call</th>
-        <th style="width:14%">QueryId</th>
+        <th style="width:13%">QueryId</th>
         <th style="width:44%">Example</th>
 	<th style="width:11%">Remark</th>
     </tr>
@@ -138,9 +139,9 @@ table {
         <td style="width:5%">{{ .Rank}}</td>        
         <td style="width:8%">{{ .Response_time}}</td>
         <td style="width:7%">{{ .Response_ratio}}</td>
-	<td style="width:5%">{{ .Calls}}</td>        
+	<td style="width:6%">{{ .Calls}}</td>        
         <td style="width:6%">{{ .R_Call}}</td>
-        <td style="width:14%">{{ .QueryId}}</td>
+        <td style="width:13%">{{ .QueryId}}</td>
         <td style="width:44%">{{ .Example}}</td>
 	<td style="width:11%"> </td>   
     </tr>  
@@ -165,7 +166,7 @@ var (
       	slowlog string
       	all bool
       	yesterday bool
-        //output string
+        output string
 )
 
 func init() {
@@ -176,7 +177,7 @@ func init() {
         slowlogCmd.Flags().StringVarP(&until, "until", "", "", "Parse only queries older than this value,YYYY-MM-DD [HH:MM:SS]")
         slowlogCmd.Flags().BoolVarP(&all, "all", "a", false, "Parse the whole slowlog")
         slowlogCmd.Flags().BoolVarP(&yesterday, "yesterday", "y",true, "Parse yesterday's slowlog")
-        //slowlogCmd.Flags().StringVarP(&output, "o", "", "")
+        slowlogCmd.Flags().StringVarP(&output, "output", "o","", "Specify the file name to save the output")
         slowlogCmd.MarkFlagRequired("slowlog")
 }
 
@@ -199,9 +200,17 @@ func GetSlowLog(cmd *cobra.Command,args []string) {
         json.Unmarshal(slowlogResult, &slowlogs)
         
        	now := time.Now().Format("2006-01-02 15:04:05")
-
         var report = template.Must(template.New("slowlog").Parse(temp))
-        report.Execute(os.Stdout,map[string]interface{}{"slowlogs":slowlogs,"now":now})
+
+        f, _ := os.Create(output)
+        w := bufio.NewWriter(f)
+
+        report.Execute(w,map[string]interface{}{"slowlogs":slowlogs,"now":now})
+
+        w.Flush()
+	f.Close()
+        fmt.Printf("Success,Check \"%s\"!\n",output)
+
         //templates := template.Must(template.ParseFiles("cmd/slowlog.html"))
         //err = templates.ExecuteTemplate(os.Stdout, "slowlog.html", map[string]interface{}{"slowlogs":slowlogs,"now":now})
    	//if err != nil {
@@ -235,6 +244,16 @@ func checkArgs() []string {
             yesterday := time.Now().AddDate(0,0,-1).Format("2006-01-02")
             parameters["since"]="--since "+yesterday
             parameters["until"]="--until "+today
+        }
+        
+ 
+        if len(output) ==0 { 
+            output =fmt.Sprintf("%s_%s.html","/tmp/slowlog",time.Now().Format("2006_01_02_15_04_05"))
+        }
+        
+        if common.FileExists(output) {
+        	fmt.Printf("The file %s is already exists!\n",output)
+            	os.Exit(1)
         }
         
         ptQueryDigestCmd :=  []string{pt,parameters["since"],parameters["until"],slowlog}

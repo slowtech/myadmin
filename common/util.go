@@ -23,6 +23,8 @@ func FileNotExistsExit(filename string) {
         }
 }
 
+
+
 func Which(command string) string {
 	path, err := exec.LookPath(command)
 	if err == nil {
