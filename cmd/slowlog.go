@@ -219,7 +219,7 @@ func GetSlowLog(cmd *cobra.Command,args []string) {
 }
 
 
-func checkArgs() []string {
+func checkArgs() string {
       	if all && (len(since) !=0 || len(until) !=0)  {
         	fmt.Println("--all and --since(--until) are mutually exclusive")
         	os.Exit(1)
@@ -234,10 +234,10 @@ func checkArgs() []string {
             parameters["until"]=""
         } else if len(since) !=0 || len(until) !=0 { 
             if len(since) !=0 {
-               parameters["since"]="--since "+since
+               parameters["since"]="--since '"+since+"'"
             }
             if len(until) !=0 {
-               parameters["until"]="--until "+until
+               parameters["until"]="--until '"+until+"'"
             }
         } else {
             today := time.Now().Format("2006-01-02")
@@ -256,7 +256,8 @@ func checkArgs() []string {
             	os.Exit(1)
         }
         
-        ptQueryDigestCmd :=  []string{pt,parameters["since"],parameters["until"],slowlog}
+        //ptQueryDigestCmd :=  []string{pt,parameters["since"],parameters["until"],slowlog}
+        ptQueryDigestCmd :=  fmt.Sprintf("%s %s %s %s",pt,parameters["since"],parameters["until"],slowlog)
         return ptQueryDigestCmd
   
 }

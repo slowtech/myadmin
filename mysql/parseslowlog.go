@@ -11,8 +11,9 @@ import (
 )
 
 
-func ParseSlowLog(ptQueryDigestCmd []string) []byte {
-	slowLog,err := common.Run_cmd(common.Which("perl"), ptQueryDigestCmd)
+func ParseSlowLog(ptQueryDigestCmd string) []byte {
+	//slowLog,err := common.Run_cmd(common.Which("perl"), ptQueryDigestCmd)
+	slowLog,err := common.Run_cmd(ptQueryDigestCmd)
     	if err != nil {
     		fmt.Printf("err: %s\n", err)
 		fmt.Printf("cmd: %#v\n", ptQueryDigestCmd)
