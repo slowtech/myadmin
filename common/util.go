@@ -6,6 +6,8 @@ import (
         "fmt"
         "github.com/mattn/go-shellwords"
 	"net"
+	"strconv"
+	"strings"
 )
 
 func FileExists(filename string) bool {
@@ -48,9 +50,16 @@ func Run_cmd(c string, args []string) (string,error){
 func Run_cmd(command string) (string,error) {
         cmdArray,_:= shellwords.Parse(command)
         c,args := cmdArray[0],cmdArray[1:]
+        fmt.Println(c,args)
         cmd := exec.Command(c, args...)
         out, err := cmd.Output()
         return string(out),err
+}
+
+func Run_cmd_direct(command string) (string,error) {
+	cmd := exec.Command("bash","-c",command)
+	out, err := cmd.Output()
+	return string(out),err
 }
 
 func GetIP()(IpAddr string){
@@ -68,4 +77,26 @@ func GetIP()(IpAddr string){
         }
         }
         return 
+}
+
+func GetTotalMem() (int) {
+	getMemoryCmd := `grep "MemTotal" /proc/meminfo | awk '{print $2}'`
+	totalMem, err := Run_cmd_direct(getMemoryCmd)
+	if err != nil {
+		fmt.Println(err)
+	}
+	totalMemInt, _ := strconv.Atoi(strings.TrimRight(totalMem,"\n"))
+	return totalMemInt / 1024
+}
+
+func GetCPUCore() (int) {
+	getCPUCoreCmd := `grep "processor" /proc/cpuinfo | wc -l`
+	cpuCore, err := Run_cmd_direct(getCPUCoreCmd)
+	fmt.Println(cpuCore)
+	if err != nil {
+		fmt.Println(err)
+	}
+	totalCPUcore, _ := strconv.Atoi(strings.TrimRight(cpuCore,"\n"))
+	fmt.Println(totalCPUcore)
+	return totalCPUcore
 }
