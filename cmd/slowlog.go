@@ -1,18 +1,17 @@
 package cmd
 
 import (
-        "github.com/spf13/cobra"
-        "fmt"
-        //"reflect"
-        "os"
-        "github.com/slowtech/myadmin/common"
-        "html/template"
-        "github.com/slowtech/myadmin/mysql"
-        "encoding/json"
-        "time"
-        "bufio"
+	"github.com/spf13/cobra"
+	"fmt"
+	//"reflect"
+	"os"
+	"github.com/slowtech/myadmin/common"
+	"html/template"
+	"github.com/slowtech/myadmin/mysql"
+	"encoding/json"
+	"time"
+	"bufio"
 )
-
 
 const temp = `
 <!DOCTYPE html>
@@ -157,107 +156,106 @@ var (
 	slowlogCmd = &cobra.Command{
 		Use:   "slowlog",
 		Short: "Summarize the slow log",
-		Long: `Runs commands related to the slowlog.`,
-                Run: GetSlowLog,
-      	}
-      	pt string
-      	since string
-      	until string
-      	slowlog string
-      	all bool
-      	yesterday bool
-        output string
+		Long:  `Runs commands related to the slowlog.`,
+		Run:   GetSlowLog,
+	}
+	pt        string
+	since     string
+	until     string
+	slowlog   string
+	all       bool
+	yesterday bool
+	output    string
 )
 
 func init() {
 	rootCmd.AddCommand(slowlogCmd)
-        slowlogCmd.Flags().StringVarP(&pt, "pt", "p", "/usr/local/bin/pt-query-digest", "The absolute path of pt-query-digest")
-        slowlogCmd.Flags().StringVarP(&slowlog, "slowlog", "s", "", "The absolute path of slowlog")
-        slowlogCmd.Flags().StringVarP(&since, "since", "", "", "Parse only queries newer than this value,YYYY-MM-DD [HH:MM:SS]")
-        slowlogCmd.Flags().StringVarP(&until, "until", "", "", "Parse only queries older than this value,YYYY-MM-DD [HH:MM:SS]")
-        slowlogCmd.Flags().BoolVarP(&all, "all", "a", false, "Parse the whole slowlog")
-        slowlogCmd.Flags().BoolVarP(&yesterday, "yesterday", "y",true, "Parse yesterday's slowlog")
-        slowlogCmd.Flags().StringVarP(&output, "output", "o","", "Specify the file name to save the output")
-        slowlogCmd.MarkFlagRequired("slowlog")
+	slowlogCmd.Flags().StringVarP(&pt, "pt", "p", "/usr/local/bin/pt-query-digest", "The absolute path of pt-query-digest")
+	slowlogCmd.Flags().StringVarP(&slowlog, "slowlog", "s", "", "The absolute path of slowlog")
+	slowlogCmd.Flags().StringVarP(&since, "since", "", "", "Parse only queries newer than this value,YYYY-MM-DD [HH:MM:SS]")
+	slowlogCmd.Flags().StringVarP(&until, "until", "", "", "Parse only queries older than this value,YYYY-MM-DD [HH:MM:SS]")
+	slowlogCmd.Flags().BoolVarP(&all, "all", "a", false, "Parse the whole slowlog")
+	slowlogCmd.Flags().BoolVarP(&yesterday, "yesterday", "y", true, "Parse yesterday's slowlog")
+	slowlogCmd.Flags().StringVarP(&output, "output", "o", "", "Specify the file name to save the output")
+	slowlogCmd.MarkFlagRequired("slowlog")
 }
 
-func GetSlowLog(cmd *cobra.Command,args []string) {
-   	ptQueryDigestCmd := checkArgs()
-   	slowlogResult :=mysql.ParseSlowLog(ptQueryDigestCmd)
-        type slowlog struct {
-        	Rank string
-                Response_time string
-                Response_ratio string
-                Calls string
-                R_Call string
-                QueryId string
-                Example string
-        }
+func GetSlowLog(cmd *cobra.Command, slowlog_args []string) {
+	ptQueryDigestCmd := checkslowlog_args()
+	slowlogResult := mysql.ParseSlowLog(ptQueryDigestCmd)
+	type slowlog struct {
+		Rank           string
+		Response_time  string
+		Response_ratio string
+		Calls          string
+		R_Call         string
+		QueryId        string
+		Example        string
+	}
 
-        //将二维数组转化为json
-        slowlogs := []slowlog{}
+	//将二维数组转化为json
+	slowlogs := []slowlog{}
 
-        json.Unmarshal(slowlogResult, &slowlogs)
-        
-       	now := time.Now().Format("2006-01-02 15:04:05")
-        var report = template.Must(template.New("slowlog").Parse(temp))
+	json.Unmarshal(slowlogResult, &slowlogs)
 
-        f, _ := os.Create(output)
-        w := bufio.NewWriter(f)
+	now := time.Now().Format("2006-01-02 15:04:05")
+	var report = template.Must(template.New("slowlog").Parse(temp))
 
-        report.Execute(w,map[string]interface{}{"slowlogs":slowlogs,"now":now})
+	f, _ := os.Create(output)
+	w := bufio.NewWriter(f)
 
-        w.Flush()
+	report.Execute(w, map[string]interface{}{"slowlogs": slowlogs, "now": now})
+
+	w.Flush()
 	f.Close()
-        fmt.Printf("Success,Check \"%s\"!\n",output)
+	fmt.Printf("Success,Check \"%s\"!\n", output)
 
-        //templates := template.Must(template.ParseFiles("cmd/slowlog.html"))
-        //err = templates.ExecuteTemplate(os.Stdout, "slowlog.html", map[string]interface{}{"slowlogs":slowlogs,"now":now})
-   	//if err != nil {
-        //	fmt.Println("Cannot Get View ", err)
-    	//}
+
+	//templates := template.Must(template.ParseFiles("cmd/slowlog.html"))
+	//err = templates.ExecuteTemplate(os.Stdout, "slowlog.html", map[string]interface{}{"slowlogs":slowlogs,"now":now})
+	//if err != nil {
+	//	fmt.Println("Cannot Get View ", err)
+	//}
 }
 
+func checkslowlog_args() string {
+	if all && (len(since) != 0 || len(until) != 0) {
+		fmt.Println("--all and --since(--until) are mutually exclusive")
+		os.Exit(1)
+	}
 
-func checkArgs() string {
-      	if all && (len(since) !=0 || len(until) !=0)  {
-        	fmt.Println("--all and --since(--until) are mutually exclusive")
-        	os.Exit(1)
-      	}
-         
-      	common.FileNotExistsExit(slowlog)
-      	common.FileNotExistsExit(pt)
+	common.FileNotExistsExit(slowlog)
+	common.FileNotExistsExit(pt)
 
-      	parameters := make(map[string]string)
-      	if all {
-            parameters["since"]=""
-            parameters["until"]=""
-        } else if len(since) !=0 || len(until) !=0 { 
-            if len(since) !=0 {
-               parameters["since"]="--since '"+since+"'"
-            }
-            if len(until) !=0 {
-               parameters["until"]="--until '"+until+"'"
-            }
-        } else {
-            today := time.Now().Format("2006-01-02")
-            yesterday := time.Now().AddDate(0,0,-1).Format("2006-01-02")
-            parameters["since"]="--since "+yesterday
-            parameters["until"]="--until "+today
-        }
-        
- 
-        if len(output) ==0 { 
-            output =fmt.Sprintf("%s_%s.html","/tmp/slowlog",time.Now().Format("2006_01_02_15_04_05"))
-        }
-        
-        if common.FileExists(output) {
-        	fmt.Printf("The file %s is already exists!\n",output)
-            	os.Exit(1)
-        }
-        
-        //ptQueryDigestCmd :=  []string{pt,parameters["since"],parameters["until"],slowlog}
-        ptQueryDigestCmd :=  fmt.Sprintf("%s %s %s %s",pt,parameters["since"],parameters["until"],slowlog)
-        return ptQueryDigestCmd
-  
+	slowlog_args := make(map[string]string)
+	if all {
+		slowlog_args["since"] = ""
+		slowlog_args["until"] = ""
+	} else if len(since) != 0 || len(until) != 0 {
+		if len(since) != 0 {
+			slowlog_args["since"] = "--since '" + since + "'"
+		}
+		if len(until) != 0 {
+			slowlog_args["until"] = "--until '" + until + "'"
+		}
+	} else {
+		today := time.Now().Format("2006-01-02")
+		yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+		slowlog_args["since"] = "--since " + yesterday
+		slowlog_args["until"] = "--until " + today
+	}
+
+	if len(output) == 0 {
+		output = fmt.Sprintf("%s_%s.html", "/tmp/slowlog", time.Now().Format("2006_01_02_15_04_05"))
+	}
+
+	if common.FileExists(output) {
+		fmt.Printf("The file %s is already exists!\n", output)
+		os.Exit(1)
+	}
+
+	//ptQueryDigestCmd :=  []string{pt,slowlog_args["since"],slowlog_args["until"],slowlog}
+	ptQueryDigestCmd := fmt.Sprintf("%s %s %s %s", pt, slowlog_args["since"], slowlog_args["until"], slowlog)
+	return ptQueryDigestCmd
+
 }

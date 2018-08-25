@@ -2,16 +2,15 @@ package cmd
 
 import (
 	"os"
-        "github.com/spf13/cobra"
+	"github.com/spf13/cobra"
 	"fmt"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "myadmin",
-	Long: `myadmin provides a comprehensive way to manage MySQL`,
+	Use:     "myadmin",
+	Long:    `myadmin provides a comprehensive way to manage MySQL`,
 	Version: "0.1",
 }
-
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
@@ -20,4 +19,3 @@ func Execute() {
 	}
 
 }
-
