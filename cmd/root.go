@@ -1,10 +1,6 @@
 package cmd
 
 import (
-<<<<<<< Updated upstream
-	"os"
-=======
->>>>>>> Stashed changes
 	"github.com/spf13/cobra"
 	"fmt"
 	"os"
