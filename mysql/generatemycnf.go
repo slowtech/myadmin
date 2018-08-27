@@ -8,6 +8,13 @@ import (
 	"strconv"
 	"bytes"
 	"bufio"
+<<<<<<< Updated upstream
+=======
+	"fmt"
+	"regexp"
+	"strings"
+	"os"
+>>>>>>> Stashed changes
 )
 
 const config = `
@@ -140,6 +147,17 @@ innodb_numa_interleave = ON
 
 func GenerateMyCnf(args map[string]string) (string) {
 	serverId := getServerId()
+<<<<<<< Updated upstream
+=======
+
+	var totalMem int
+	inputMem := args["memory"]
+	if inputMem == "" {
+		totalMem = common.GetTotalMem()
+	} else {
+		totalMem = formatMem(inputMem)
+	}
+>>>>>>> Stashed changes
 	var mycnfTemplate = template.Must(template.New("mycnf").Parse(config))
 
 	type Variable struct {
@@ -147,7 +165,10 @@ func GenerateMyCnf(args map[string]string) (string) {
 		ExtraVariables_57 map[string]string
 	}
 	var variable Variable
+<<<<<<< Updated upstream
 	totalMem := common.GetTotalMem()
+=======
+>>>>>>> Stashed changes
 	variable.DynamicVariables = make(map[string]string)
 	variable.DynamicVariables["basedir"] = args["basedir"]
 	variable.DynamicVariables["datadir"] = args["datadir"]
@@ -230,3 +251,25 @@ func getInnodbLogFileSize(totalMem int) (innodb_log_file_size int) {
 	}
 	return
 }
+<<<<<<< Updated upstream
+=======
+
+func formatMem(inputMem string) (totalMem int) {
+	matched, _ := regexp.MatchString(`^(?i)\d+[M|G]B?$`, inputMem)
+	if ! matched {
+		fmt.Println(`Valid units for --memory are "M","G"`)
+		os.Exit(1)
+	}
+	inputMemLower := strings.ToLower(inputMem)
+	if strings.Contains(inputMemLower, "m") {
+		inputMemLower = strings.Split(inputMemLower, "m")[0]
+
+	} else if strings.Contains(inputMemLower, "g") {
+		inputMemLower = strings.Split(inputMemLower, "g")[0]
+		temp, _ := strconv.Atoi(inputMemLower)
+		inputMemLower = strconv.Itoa(temp * 1024)
+	}
+	totalMem, _ = strconv.Atoi(inputMemLower)
+	return
+}
+>>>>>>> Stashed changes
