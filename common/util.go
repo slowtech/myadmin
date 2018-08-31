@@ -8,6 +8,8 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"math/rand"
+	"time"
 )
 
 func FileExists(filename string) bool {
@@ -96,4 +98,34 @@ func GetCPUCore() (int) {
 	totalCPUcore, _ := strconv.Atoi(strings.TrimRight(cpuCore, "\n"))
 	fmt.Println(totalCPUcore)
 	return totalCPUcore
+}
+
+func GenerateRandomPassword(requirePasswordLen int) (string) {
+	var chars = map[string]string{
+		"upchars":  "QWERTYUIOPASDFGHJKLZXCVBNM",
+		"lowchars": "qwertyuiopasdfghjklzxcvbnm",
+		"numchars": "1234567890",
+		"symchars": ",.-+*;:_!#%&/()=?><",
+	}
+	var charTypes = [4]string{"upchars", "lowchars", "numchars", "symchars"}
+	rand.Seed(time.Now().UnixNano())
+	var maxPasswordLength int
+	if requirePasswordLen == 0 {
+		maxPasswordLength = 8 + rand.Intn(4)
+	} else {
+		maxPasswordLength = requirePasswordLen
+	}
+	pickCharTypes := charTypes[:]
+	for i := 0; i < maxPasswordLength-4; i++ {
+		pickCharTypes = append(pickCharTypes, charTypes[rand.Intn(3)])
+	}
+	rand.Shuffle(len(pickCharTypes), func(i, j int) {
+		pickCharTypes[i], pickCharTypes[j] = pickCharTypes[j], pickCharTypes[i]
+	})
+	var password = make([]byte, 0)
+	for _, k := range pickCharTypes {
+		charsValue := chars[k]
+		password = append(password, charsValue[rand.Int()%len(charsValue)])
+	}
+	return string(password)
 }

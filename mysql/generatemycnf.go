@@ -67,7 +67,6 @@ innodb_buffer_pool_dump_at_shutdown = 1
 innodb_read_io_threads = 8
 innodb_write_io_threads = 8
 innodb_flush_neighbors = {{.DynamicVariables.innodb_flush_neighbors}}
-innodb_page_cleaners = 8
 innodb_print_all_deadlocks = 1
 innodb_file_format = Barracuda
 innodb_checksum_algorithm = crc32
@@ -77,7 +76,7 @@ innodb_large_prefix = ON
 #replication
 server_id = {{.DynamicVariables.server_id}}
 log_bin = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/log/mysql-bin
-relay_log = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/log/
+relay_log = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/log/relay-bin
 sync_binlog = 1
 binlog_format = ROW
 master_info_repository = TABLE
@@ -138,6 +137,7 @@ slave-parallel-workers = 8
 slave_preserve_commit_order = 1
 
 #others
+innodb_page_cleaners = 8
 log_timestamps = system
 innodb_numa_interleave = ON
 `
