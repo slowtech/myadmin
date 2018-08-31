@@ -117,7 +117,7 @@ func GenerateRandomPassword(requirePasswordLen int) (string) {
 	}
 	pickCharTypes := charTypes[:]
 	for i := 0; i < maxPasswordLength-4; i++ {
-		pickCharTypes = append(pickCharTypes, charTypes[rand.Intn(3)])
+		pickCharTypes = append(pickCharTypes, charTypes[rand.Intn(4)])
 	}
 	rand.Shuffle(len(pickCharTypes), func(i, j int) {
 		pickCharTypes[i], pickCharTypes[j] = pickCharTypes[j], pickCharTypes[i]
