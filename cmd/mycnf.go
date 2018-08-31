@@ -11,6 +11,9 @@ var (
 	mycnfCmd = &cobra.Command{
 		Use:   "mycnf",
 		Short: "Generate my.cnf according to hardware configuration",
+		Example: `
+  $ myadmin mycnf --basedir /usr/local/mysql --datadir /data --memory 10G --port 3306 --ssd
+  $ myadmin mycnf --datadir /data --ssd=false`,
 		Long:  `Runs commands related to the my.cnf.`,
 		Run:   GetMyCnf,
 	}
