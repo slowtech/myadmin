@@ -139,7 +139,7 @@ slave_preserve_commit_order = 1
 #others
 innodb_page_cleaners = 8
 log_timestamps = system
-innodb_numa_interleave = ON
+loose-innodb_numa_interleave = ON
 `
 
 func GenerateMyCnf(args map[string]string) (string) {
