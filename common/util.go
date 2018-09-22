@@ -11,10 +11,10 @@ import (
 	"math/rand"
 	"time"
 	"bytes"
+	"syscall"
 )
 
-
-func FileExists(filename string,filetype string) bool {
+func FileExists(filename string, filetype string) bool {
 	f, err := os.Stat(filename)
 	if os.IsPermission(err) {
 		fmt.Println(err)
@@ -26,7 +26,7 @@ func FileExists(filename string,filetype string) bool {
 	if filetype == "file" {
 		return ! f.IsDir()
 	}
-	if filetype == "dir"{
+	if filetype == "dir" {
 		return f.IsDir()
 	}
 	return true
@@ -166,14 +166,25 @@ func UserAdd(user string) (string, error) {
 }
 
 func MkDir(desciption string, dir string) {
-	fmt.Printf("Begin to create %s\n",desciption)
+	fmt.Printf("Begin to create %s\n", desciption)
 	fmt.Println(dir)
-	if  ! FileExists(dir,"dir") {
+	if ! FileExists(dir, "dir") {
 		err := os.MkdirAll(dir, 0755)
-		if err !=nil {
+		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 	}
 }
 
+func CheckProcessAlive(pid int) error {
+	process, err := os.FindProcess(pid)
+	//On Unix systems, FindProcess always succeeds and returns a Process for the given pid, regardless of whether the process exists.
+	if err != nil {
+		fmt.Printf("Failed to find process: %s\n", err)
+		return err
+	}
+	err = process.Signal(syscall.Signal(0))
+	fmt.Printf("process.Signal on pid %d returned: %v\n", pid, err)
+	return  err
+}
