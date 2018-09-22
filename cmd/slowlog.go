@@ -210,7 +210,6 @@ func GetSlowLog(cmd *cobra.Command, slowlog_args []string) {
 	f.Close()
 	fmt.Printf("Success,Check \"%s\"!\n", output)
 
-
 	//templates := template.Must(template.ParseFiles("cmd/slowlog.html"))
 	//err = templates.ExecuteTemplate(os.Stdout, "slowlog.html", map[string]interface{}{"slowlogs":slowlogs,"now":now})
 	//if err != nil {
@@ -224,8 +223,15 @@ func checkslowlog_args() string {
 		os.Exit(1)
 	}
 
-	common.FileNotExistsExit(slowlog)
-	common.FileNotExistsExit(pt)
+	if ! common.FileExists(slowlog, "file") {
+		fmt.Printf("%s: no such file\n", slowlog)
+		os.Exit(1)
+	}
+
+	if ! common.FileExists(pt, "file") {
+		fmt.Printf("%s: no such file\n", pt)
+		os.Exit(1)
+	}
 
 	slowlog_args := make(map[string]string)
 	if all {
@@ -249,7 +255,7 @@ func checkslowlog_args() string {
 		output = fmt.Sprintf("%s_%s.html", "/tmp/slowlog", time.Now().Format("2006_01_02_15_04_05"))
 	}
 
-	if common.FileExists(output) {
+	if common.FileExists(output, "file") {
 		fmt.Printf("The file %s is already exists!\n", output)
 		os.Exit(1)
 	}

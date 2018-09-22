@@ -16,4 +16,3 @@ var (
 func init() {
 	rootCmd.AddCommand(utilCmd)
 }
-

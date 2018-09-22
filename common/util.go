@@ -10,23 +10,37 @@ import (
 	"strings"
 	"math/rand"
 	"time"
+	"bytes"
 )
 
-func FileExists(filename string) bool {
-	var exist = true
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		exist = false
-	}
-	return exist
-}
 
-func FileNotExistsExit(filename string) {
-	finfo, err := os.Stat(filename)
-	if os.IsNotExist(err) || finfo.IsDir() {
-		fmt.Printf("The file %s is not exists!\n", filename)
+func FileExists(filename string,filetype string) bool {
+	f, err := os.Stat(filename)
+	if os.IsPermission(err) {
+		fmt.Println(err)
 		os.Exit(1)
 	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	if filetype == "file" {
+		return ! f.IsDir()
+	}
+	if filetype == "dir"{
+		return f.IsDir()
+	}
+	return true
 }
+
+//
+//func FileNotExistsExit(filename string) {
+//	finfo, err := os.Stat(filename)
+//	if os.IsNotExist(err) || finfo.IsDir() {
+//		//fmt.Printf("The file %s does not exist!\n", filename)
+//		fmt.Printf("%s: no such file\n", filename)
+//		os.Exit(1)
+//	}
+//}
 
 func Which(command string) string {
 	path, err := exec.LookPath(command)
@@ -57,8 +71,15 @@ func Run_cmd(command string) (string, error) {
 
 func Run_cmd_direct(command string) (string, error) {
 	cmd := exec.Command("bash", "-c", command)
-	out, err := cmd.Output()
-	return string(out), err
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		return stderr.String(), err
+	}
+	return stdout.String(), err
 }
 
 func GetIP() (IpAddr string) {
@@ -80,22 +101,21 @@ func GetIP() (IpAddr string) {
 
 func GetTotalMem() (int) {
 	getMemoryCmd := `grep "MemTotal" /proc/meminfo | awk '{print $2}'`
-	totalMem, err := Run_cmd_direct(getMemoryCmd)
+	out, err := Run_cmd_direct(getMemoryCmd)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(out)
 	}
-	totalMemInt, _ := strconv.Atoi(strings.TrimRight(totalMem, "\n"))
+	totalMemInt, _ := strconv.Atoi(strings.TrimRight(out, "\n"))
 	return totalMemInt / 1024
 }
 
 func GetCPUCore() (int) {
 	getCPUCoreCmd := `grep "processor" /proc/cpuinfo | wc -l`
-	cpuCore, err := Run_cmd_direct(getCPUCoreCmd)
-	fmt.Println(cpuCore)
+	out, err := Run_cmd_direct(getCPUCoreCmd)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(out)
 	}
-	totalCPUcore, _ := strconv.Atoi(strings.TrimRight(cpuCore, "\n"))
+	totalCPUcore, _ := strconv.Atoi(strings.TrimRight(out, "\n"))
 	fmt.Println(totalCPUcore)
 	return totalCPUcore
 }
@@ -129,3 +149,31 @@ func GenerateRandomPassword(requirePasswordLen int) (string) {
 	}
 	return string(password)
 }
+
+func UserAdd(user string) (string, error) {
+	cmd := fmt.Sprintf("useradd %s", user)
+	out, err := Run_cmd_direct(cmd)
+	if err != nil {
+		return out, err
+	}
+	randomPasswd := GenerateRandomPassword(8)
+	cmd = fmt.Sprintf("echo '%s' | passwd --stdin %s", randomPasswd, user)
+	out, err = Run_cmd_direct(cmd)
+	if err != nil {
+		return out, err
+	}
+	return randomPasswd, nil
+}
+
+func MkDir(desciption string, dir string) {
+	fmt.Printf("Begin to create %s\n",desciption)
+	fmt.Println(dir)
+	if  ! FileExists(dir,"dir") {
+		err := os.MkdirAll(dir, 0755)
+		if err !=nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
+}
+
