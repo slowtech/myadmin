@@ -4,7 +4,6 @@ import (
 	"text/template"
 	"bytes"
 	"strings"
-	"fmt"
 )
 
 const initScript = `
@@ -466,6 +465,5 @@ func GetServiceScript(scriptType string, mysqlVersion string, conf string, based
 	} else {
 		newString = b.String()
 	}
-	fmt.Println(newString)
 	return []byte(newString)
 }
