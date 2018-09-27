@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+
 var (
 	randomPasswordCmd = &cobra.Command{
 		Use:   "password",

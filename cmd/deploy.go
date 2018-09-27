@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/slowtech/myadmin/mysql"
+	"fmt"
 )
 
 var (
@@ -25,7 +26,10 @@ func init() {
 }
 
 func Deploy(cmd *cobra.Command, args []string) {
-	mysql.DeployInstance(deploy_binary,deploy_cnf)
+	//mysql.DeployInstance(deploy_binary,deploy_cnf)
+	//out := mysql.GetServiceScript("init","5.6","/etc/my.cnf","/user/local/mysql","")
+	out := mysql.GetServiceScript("systemtd","","/etc/my.cnf","/user/local/mysql","/data/mysql/3306/data/mysqld.pid")
+	fmt.Println(string(out[:]))
 
 }
 

@@ -181,7 +181,7 @@ func init() {
 }
 
 func GetSlowLog(cmd *cobra.Command, slowlog_args []string) {
-	ptQueryDigestCmd := checkslowlog_args()
+	ptQueryDigestCmd := checkSlowlogArgs()
 	slowlogResult := mysql.ParseSlowLog(ptQueryDigestCmd)
 	type slowlog struct {
 		Rank           string
@@ -202,12 +202,12 @@ func GetSlowLog(cmd *cobra.Command, slowlog_args []string) {
 	var report = template.Must(template.New("slowlog").Parse(temp))
 
 	f, _ := os.Create(output)
+	defer f.Close()
 	w := bufio.NewWriter(f)
 
 	report.Execute(w, map[string]interface{}{"slowlogs": slowlogs, "now": now})
 
 	w.Flush()
-	f.Close()
 	fmt.Printf("Success,Check \"%s\"!\n", output)
 
 	//templates := template.Must(template.ParseFiles("cmd/slowlog.html"))
@@ -217,7 +217,7 @@ func GetSlowLog(cmd *cobra.Command, slowlog_args []string) {
 	//}
 }
 
-func checkslowlog_args() string {
+func checkSlowlogArgs() string {
 	if all && (len(since) != 0 || len(until) != 0) {
 		fmt.Println("--all and --since(--until) are mutually exclusive")
 		os.Exit(1)

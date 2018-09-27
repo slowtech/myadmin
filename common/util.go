@@ -12,13 +12,15 @@ import (
 	"time"
 	"bytes"
 	"syscall"
+	"bufio"
+	"io"
+	log "github.com/sirupsen/logrus"
 )
 
 func FileExists(filename string, filetype string) bool {
 	f, err := os.Stat(filename)
 	if os.IsPermission(err) {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 	if os.IsNotExist(err) {
 		return false
@@ -70,6 +72,7 @@ func Run_cmd(command string) (string, error) {
 }
 
 func Run_cmd_direct(command string) (string, error) {
+	log.Infof("Command: %s", command)
 	cmd := exec.Command("bash", "-c", command)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -165,15 +168,19 @@ func UserAdd(user string) (string, error) {
 	return randomPasswd, nil
 }
 
-func MkDir(desciption string, dir string) {
-	fmt.Printf("Begin to create %s\n", desciption)
-	fmt.Println(dir)
+func MkDir(dir string) {
+	log.WithFields(log.Fields{
+		"Dir": dir,
+	}).Infof("Create Directory")
 	if ! FileExists(dir, "dir") {
 		err := os.MkdirAll(dir, 0755)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
+	} else {
+		log.WithFields(log.Fields{
+			"Dir": dir,
+		}).Warnf("Directory is already exist")
 	}
 }
 
@@ -181,10 +188,38 @@ func CheckProcessAlive(pid int) error {
 	process, err := os.FindProcess(pid)
 	//On Unix systems, FindProcess always succeeds and returns a Process for the given pid, regardless of whether the process exists.
 	if err != nil {
-		fmt.Printf("Failed to find process: %s\n", err)
+		log.Warnf("Failed to find process: %s\n", err)
 		return err
 	}
 	err = process.Signal(syscall.Signal(0))
-	fmt.Printf("process.Signal on pid %d returned: %v\n", pid, err)
-	return  err
+	//fmt.Printf("process.Signal on pid %d returned: %v\n", pid, err)
+	return err
+}
+
+func GrepLine(file string, pattern string) ([] string, error) {
+	var matchLines = make([]string, 0)
+	f, err := os.Open(file)
+	if err != nil {
+		log.Fatalf("error opening file ", err)
+	}
+	defer f.Close()
+	r := bufio.NewReader(f)
+	for {
+		line, err := r.ReadString(10)
+		if err == io.EOF {
+
+			if strings.Contains(line, pattern) {
+				matchLines = append(matchLines, line)
+			}
+
+			break
+		} else if err != nil {
+			return []string{}, err
+		}
+
+		if strings.Contains(line, pattern) {
+			matchLines = append(matchLines, line)
+		}
+	}
+	return matchLines, nil
 }

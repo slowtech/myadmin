@@ -68,10 +68,10 @@ innodb_read_io_threads = 8
 innodb_write_io_threads = 8
 innodb_flush_neighbors = {{.DynamicVariables.innodb_flush_neighbors}}
 innodb_print_all_deadlocks = 1
-innodb_file_format = Barracuda
+loose-innodb_file_format = Barracuda
 innodb_checksum_algorithm = crc32
 innodb_strict_mode = ON
-innodb_large_prefix = ON
+loose-innodb_large_prefix = ON
 
 #replication
 server_id = {{.DynamicVariables.server_id}}
@@ -114,6 +114,7 @@ table_definition_cache = 65535
 table_open_cache_instances = 64
 event_scheduler = 1
 eq_range_index_dive_limit = 200
+disconnect_on_expired_password = 0
 
 [mysql-5.6]
 #query cache
