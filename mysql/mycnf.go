@@ -114,7 +114,6 @@ table_definition_cache = 65535
 table_open_cache_instances = 64
 event_scheduler = 1
 eq_range_index_dive_limit = 200
-disconnect_on_expired_password = 0
 
 [mysql-5.6]
 #query cache

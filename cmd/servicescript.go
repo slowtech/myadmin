@@ -108,5 +108,4 @@ Check MySQL Service Status
 	d.Println()
 	d.Printf("To Start MySQL Automatically on System Startup, Do as follows.\n")
 	fmt.Println(usage)
-
 }

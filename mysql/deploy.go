@@ -116,13 +116,15 @@ func DeployInstance(mysqldBinary string, configFile string) {
 	mysqldPath := filepath.Join(basedir, "bin", "mysqld")
 
 	//time.Sleep(1000 * time.Second)
-	if ! initialize(configFile, mysqldPath) {
-		log.Fatalf("Fail to initialize mysqld, Check the error log in detail.")
+	out, err = initialize(configFile, mysqldPath)
+	if err != nil {
+		log.Fatalf("Fail to initialize mysqld\n%s",out)
 	}
 
 	log.Infof("---- Step 5, Start MySQL ----")
 
-	startMySQL(configFile, mysqldPath)
+	mysqldSafePath := filepath.Join(basedir, "bin", "mysqld_safe")
+	go startMySQL(configFile, mysqldSafePath)
 
 	if ! checkInstanceAlive(variables["pid_file"], 30) {
 		log.Fatalf("Fail to start mysqld, Check the error log in detail.")
@@ -161,7 +163,7 @@ func createUser(runUser string) {
 		if err != nil {
 			fmt.Println(out)
 		}
-		log.Infof("Successfully created user %s,Initial password: %s", out)
+		log.Infof("Successfully created user %s,Initial password: %s", runUser, out)
 	} else {
 		log.Infof("User %s already exist, No need to create.", runUser)
 	}
@@ -187,17 +189,14 @@ func getConfigParameters(configFile string, variables map[string]string) {
 
 }
 
-func initialize(configFile string, mysqld string) bool {
+func initialize(configFile string, mysqld string) (string, error) {
 	initializeCmd := fmt.Sprintf("%s --defaults-file=%s --initialize", mysqld, configFile)
-	_, err := common.Run_cmd_direct(initializeCmd)
-	if err != nil {
-		return false
-	}
-	return true
+	out, err := common.Run_cmd_direct(initializeCmd)
+	return out, err
 }
 
-func startMySQL(configFile string, mysqld string) {
-	startCmd := fmt.Sprintf("%s --defaults-file=%s &", mysqld, configFile)
+func startMySQL(configFile string, mysqld_safe string) {
+	startCmd := fmt.Sprintf("%s --defaults-file=%s --disconnect-on-expired-password=0 &", mysqld_safe, configFile)
 	common.Run_cmd_direct(startCmd)
 }
 
