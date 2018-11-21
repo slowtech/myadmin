@@ -65,7 +65,7 @@ func Run_cmd(c string, args []string) (string,error){
 func Run_cmd(command string) (string, error) {
 	cmdArray, _ := shellwords.Parse(command)
 	c, args := cmdArray[0], cmdArray[1:]
-	fmt.Println(c, args)
+	//fmt.Println(c, args)
 	cmd := exec.Command(c, args...)
 	out, err := cmd.Output()
 	return string(out), err
