@@ -72,7 +72,6 @@ func Run_cmd(command string) (string, error) {
 }
 
 func Run_cmd_direct(command string) (string, error) {
-	log.Infof("Command: %s", command)
 	cmd := exec.Command("bash", "-c", command)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
