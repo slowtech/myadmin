@@ -13,7 +13,7 @@ var (
 		Short: "Generate my.cnf according to hardware configuration",
 		Example: `
   $ myadmin mycnf --basedir /usr/local/mysql --datadir /data --memory 10G --port 3306 --ssd
-  $ myadmin mycnf --datadir /data --ssd=false`,
+  $ myadmin mycnf --datadir /data`,
 		Long:  `Runs commands related to the my.cnf.`,
 		Run:   GetMyCnf,
 	}
@@ -31,7 +31,7 @@ func init() {
 	mycnfCmd.Flags().StringVarP(&mycnf_basedir, "basedir", "", "/usr/local/mysql", "The path to the MySQL installation directory")
 	mycnfCmd.Flags().StringVarP(&mycnf_datadir, "datadir", "", "", "The path to the MySQL server data directory")
 	mycnfCmd.Flags().StringVarP(&mycnf_memory, "memory", "", "", `Server Memory,valid units are "M","G"`)
-	mycnfCmd.Flags().BoolVarP(&mycnf_ssd, "ssd", "", true, "Is it SSD?")
+	mycnfCmd.Flags().BoolVarP(&mycnf_ssd, "ssd", "",false, "Is it SSD?")
 	mycnfCmd.MarkFlagRequired("datadir")
 }
 

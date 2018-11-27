@@ -1,4 +1,4 @@
-package mysql
+package main
 
 import (
 	"text/template"
@@ -54,12 +54,15 @@ join_buffer_size = {{.DynamicVariables.join_buffer_size}}
 
 #innodb
 innodb_buffer_pool_size = {{.DynamicVariables.innodb_buffer_pool_size}}
-innodb_flush_log_at_trx_commit = 1
-innodb_io_capacity = {{.DynamicVariables.innodb_io_capacity}}
+innodb_log_file_size = {{.DynamicVariables.innodb_log_file_size}}
+innodb_flush_log_at_trx_commit = 1{{if or (.DynamicVariables.MySQL57) (.DynamicVariables.MySQL80)}}
+innodb_undo_tablespaces = 2
+innodb_max_undo_log_size = 1024M
+innodb_undo_log_truncate = 1
+{{end}}innodb_io_capacity = {{.DynamicVariables.innodb_io_capacity}}
 innodb_io_capacity_max = {{.DynamicVariables.innodb_io_capacity_max}}
 innodb_data_file_path = ibdata1:1G:autoextend
 innodb_flush_method = O_DIRECT
-innodb_log_file_size = {{.DynamicVariables.innodb_log_file_size}}
 innodb_purge_threads = 4
 innodb_autoinc_lock_mode = 2
 innodb_buffer_pool_load_at_startup = 1
@@ -72,6 +75,7 @@ loose-innodb_file_format = Barracuda
 innodb_checksum_algorithm = crc32
 innodb_strict_mode = ON
 loose-innodb_large_prefix = ON
+
 
 #replication
 server_id = {{.DynamicVariables.server_id}}
@@ -99,11 +103,23 @@ rpl_semi_sync_master_timeout = 1000
 gtid_mode = ON
 enforce_gtid_consistency = 1
 
+{{if or (.DynamicVariables.MySQL57) (.DynamicVariables.MySQL80)}}
+#multi-threaded slave
+slave-parallel-type = LOGICAL_CLOCK
+slave-parallel-workers = 8
+slave_preserve_commit_order = 1
+{{end}}
 
 #slow log 
 slow_query_log = ON
 long_query_time = 0.5
 slow_query_log_file = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/log/slow.log
+
+{{if or (.DynamicVariables.MySQL56) (.DynamicVariables.MySQL57)}}
+#query cache
+query_cache_type = 0
+query_cache_size = 0
+{{end}}
 
 #others
 open_files_limit = 65535
@@ -114,32 +130,13 @@ table_definition_cache = 65535
 table_open_cache_instances = 64
 event_scheduler = 1
 eq_range_index_dive_limit = 200
-
-[mysql-5.6]
-#query cache
-query_cache_type = 0
-query_cache_size = 0
-
-[mysql-5.7]
-#query cache
-query_cache_type = 0
-query_cache_size = 0
-
-#undo tablespace
-innodb_undo_tablespaces = 2
-innodb_max_undo_log_size = 1024M
-innodb_undo_log_truncate = 1
-{{range  $k, $v := .ExtraVariables_57}}{{ $k }} = {{$v}}{{end}}
-
-#multi-threaded slave
-slave-parallel-type = LOGICAL_CLOCK
-slave-parallel-workers = 8
-slave_preserve_commit_order = 1
-
-#others
+log_bin_trust_function_creators = 1{{if or (.DynamicVariables.MySQL57) (.DynamicVariables.MySQL80)}}
 innodb_page_cleaners = 8
 log_timestamps = system
 loose-innodb_numa_interleave = ON
+{{end}}
+
+{{range  $k, $v := .ExtraVariables_57}}{{ $k }} = {{$v}}{{end}}
 `
 
 func GenerateMyCnf(args map[string]string) (string) {
@@ -155,11 +152,11 @@ func GenerateMyCnf(args map[string]string) (string) {
 	var mycnfTemplate = template.Must(template.New("mycnf").Parse(config))
 
 	type Variable struct {
-		DynamicVariables  map[string]string
-		ExtraVariables_57 map[string]string
+		DynamicVariables  map[string]interface{}
+		ExtraVariables_57 map[string]interface{}
 	}
 	var variable Variable
-	variable.DynamicVariables = make(map[string]string)
+	variable.DynamicVariables = make(map[string]interface{})
 	variable.DynamicVariables["basedir"] = args["basedir"]
 	variable.DynamicVariables["datadir"] = args["datadir"]
 	variable.DynamicVariables["port"] = args["port"]
@@ -168,6 +165,7 @@ func GenerateMyCnf(args map[string]string) (string) {
 	variable.DynamicVariables["innodb_flush_neighbors"] = "0"
 	variable.DynamicVariables["innodb_io_capacity"] = "1000"
 	variable.DynamicVariables["innodb_io_capacity_max"] = "2500"
+	variable.DynamicVariables["MySQL80"] = true
 	if args["ssd"] == "0" {
 		variable.DynamicVariables["innodb_flush_neighbors"] = "1"
 		variable.DynamicVariables["innodb_io_capacity"] = "200"
@@ -261,3 +259,18 @@ func formatMem(inputMem string) (totalMem int) {
 	return
 }
 
+
+func main() {
+
+	mycnf_args := make(map[string]string)
+	mycnf_args["basedir"] = "/usr/local/mysql"
+	mycnf_args["datadir"] = "/data"
+	mycnf_args["port"] = strconv.Itoa(3306)
+	mycnf_args["memory"] = "10G"
+		mycnf_args["ssd"] = "0"
+
+	mycnf := GenerateMyCnf(mycnf_args)
+	fmt.Println(mycnf)
+
+
+}
