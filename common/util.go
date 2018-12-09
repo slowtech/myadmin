@@ -222,3 +222,13 @@ func GrepLine(file string, pattern string) ([] string, error) {
 	}
 	return matchLines, nil
 }
+
+func IsEmpty(dir string) (bool) {
+	f, _ := os.Open(dir)
+	defer f.Close()
+	_, err := f.Readdir(1)
+	if err == io.EOF {
+		return true
+	}
+	return false
+}

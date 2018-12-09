@@ -2,18 +2,18 @@ package mysql
 
 import (
 	"fmt"
-	"github.com/slowtech/myadmin/common"
-	"strings"
-	"path/filepath"
-	"os"
-	"os/user"
 	"github.com/go-ini/ini"
-	"io/ioutil"
-	"time"
-	"strconv"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	log "github.com/sirupsen/logrus"
+	"github.com/slowtech/myadmin/common"
+	"io/ioutil"
+	"os"
+	"os/user"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func DeployInstance(mysqldBinary string, configFile string) {
@@ -39,9 +39,18 @@ func DeployInstance(mysqldBinary string, configFile string) {
 
 	getConfigParameters(configFile, variables)
 
+
+	// Check whether the pid related mysqld process is exists
 	if checkInstanceAlive(variables["pid_file"], 1) {
 		log.Fatalf("A mysqld process already exists")
 	}
+
+	// Check whether the data directory is empty
+	datadir := variables["datadir"]
+    if common.FileExists(datadir,"dir") && ! common.IsEmpty(datadir) {
+		log.Fatalf("Data directory %s is not empty!",datadir)
+	}
+
 
 	//Create the user to run mysqld daemon
 	runUser := variables["user"]
@@ -62,7 +71,6 @@ func DeployInstance(mysqldBinary string, configFile string) {
 		variables["basedir"] = "/usr/local/mysql"
 	}
 
-	datadir := variables["datadir"]
 	if datadir == "" {
 		datadir := filepath.Join(variables["basedir"], "data")
 		log.Warnf("Fail to find datadir in %s. Use %s as the default datadir", configFile, datadir)
@@ -82,6 +90,8 @@ func DeployInstance(mysqldBinary string, configFile string) {
 
 		variablesNew[v] = k
 	}
+	var out string
+	var err error
 
 	for k, v := range variablesNew {
 		common.MkDir(k)
@@ -89,36 +99,58 @@ func DeployInstance(mysqldBinary string, configFile string) {
 			continue
 		}
 		chownCmd := fmt.Sprintf("chown -R %s %s", variables["user"], k)
-		_, err := common.Run_cmd_direct(chownCmd)
+		_, err = common.Run_cmd_direct(chownCmd)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	log.Infof("---- Step 3, Untar the MySQL binary tarball && Create a soft link ----")
-	untarCommand := fmt.Sprintf("tar -xvf %s -C %s", mysqldBinary, filepath.Dir(variables["basedir"]))
-	out, err := common.Run_cmd_direct(untarCommand)
-	if err != nil {
-		log.Fatalf(out)
-	}
-	untarDir := mysqldBinary[0:strings.Index(mysqldBinary, ".tar")]
 
-	err = os.Symlink(untarDir, basedir)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"LINK_NAME": basedir,
-			"TARGET":    untarDir,
-		}).Fatal("Fail to create a soft link")
+	untarDir := strings.Split(mysqldBinary, ".tar")[0]
+	if ! common.FileExists(untarDir, "dir") {
+		untarCommand := fmt.Sprintf("tar -xvf %s -C %s", mysqldBinary, filepath.Dir(variables["basedir"]))
+		out, err = common.Run_cmd_direct(untarCommand)
+		if err != nil {
+			log.Fatalf(out)
+		}
+	} else {
+		log.Warnf("No need to untar the MySQL binary tarball, which is already exists")
 	}
 
+	needCreateSymlink := true
+	fileInfo, err := os.Lstat(basedir)
+	if err == nil {
+		if fileInfo.Mode()&os.ModeSymlink != 0 {
+			source_file, _ := os.Readlink(basedir)
+			if source_file == filepath.Base(untarDir) {
+				needCreateSymlink = false
+				log.Warnf("No need to create a soft link, which is already exists")
+			}
+		}
+	}
+
+	if needCreateSymlink {
+		err = os.Symlink(untarDir, basedir)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"LINK_NAME": basedir,
+				"TARGET":    untarDir,
+			}).Fatal("Fail to create a soft link")
+		}
+	}
 	log.Infof("---- Step 4, Initialize MySQL Instance ----")
 
 	mysqldPath := filepath.Join(basedir, "bin", "mysqld")
 
 	//time.Sleep(1000 * time.Second)
-	out, err = initialize(configFile, mysqldPath)
+	var initializeCmd string
+	out, err, initializeCmd = initialize(configFile, mysqldPath)
 	if err != nil {
-		log.Fatalf("Fail to initialize mysqld\n%s",out)
+		log.WithFields(log.Fields{
+			"Command": initializeCmd,
+		}).Fatalf("Fail to initialize mysqld\n%s",out)
+		log.Fatalf("Fail to initialize mysqld\n%s", out)
 	}
 
 	log.Infof("---- Step 5, Start MySQL ----")
@@ -126,12 +158,13 @@ func DeployInstance(mysqldBinary string, configFile string) {
 	mysqldSafePath := filepath.Join(basedir, "bin", "mysqld_safe")
 	go startMySQL(configFile, mysqldSafePath)
 
+	log_error := variables["log_error"]
+
 	if ! checkInstanceAlive(variables["pid_file"], 30) {
-		log.Fatalf("Fail to start mysqld, Check the error log in detail.")
+		log.Fatalf("Fail to start mysqld, Check the error log %s in detail.",log_error)
 	}
 
 	log.Infof("---- Step 6, Reset root password ----")
-	log_error := variables["log_error"]
 	matchLines, gerr := common.GrepLine(log_error, "temporary password")
 	if gerr != nil {
 		fmt.Println(gerr)
@@ -165,7 +198,7 @@ func createUser(runUser string) {
 		}
 		log.Infof("Successfully created user %s,Initial password: %s", runUser, out)
 	} else {
-		log.Infof("User %s already exist, No need to create.", runUser)
+		log.Infof("No need to create, which is already exist")
 	}
 }
 
@@ -189,10 +222,11 @@ func getConfigParameters(configFile string, variables map[string]string) {
 
 }
 
-func initialize(configFile string, mysqld string) (string, error) {
+func initialize(configFile string, mysqld string) (string, error,string) {
+	// Anyway,you can use --initialize-insecure,but it conflicts with plugin_load = "validate_password.so"
 	initializeCmd := fmt.Sprintf("%s --defaults-file=%s --initialize", mysqld, configFile)
 	out, err := common.Run_cmd_direct(initializeCmd)
-	return out, err
+	return out, err,initializeCmd
 }
 
 func startMySQL(configFile string, mysqld_safe string) {
