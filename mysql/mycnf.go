@@ -1,22 +1,22 @@
-package main
+package mysql
 
 import (
-	"text/template"
+	"bufio"
+	"bytes"
+	"fmt"
 	"github.com/slowtech/myadmin/common"
 	"math/rand"
-	"time"
-	"strconv"
-	"bytes"
-	"bufio"
-	"fmt"
-	"regexp"
-	"strings"
 	"os"
+	"regexp"
+	"strconv"
+	"strings"
+	"text/template"
+	"time"
 )
 
 const config = `
 [client]
-socket = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/data/mysql.sock
+socket = {{.datadir}}/mysql/{{.port}}/data/mysql.sock
 
 [mysql]
 no-auto-rehash
@@ -24,15 +24,15 @@ no-auto-rehash
 [mysqld]
 #general
 user = mysql
-port = {{.DynamicVariables.port}}
-basedir = {{.DynamicVariables.basedir}}
-datadir = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/data
-socket = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/data/mysql.sock
-pid_file = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/data/mysql.pid
+port = {{.port}}
+basedir = {{.basedir}}
+datadir = {{.datadir}}/mysql/{{.port}}/data
+socket = {{.datadir}}/mysql/{{.port}}/data/mysql.sock
+pid_file = {{.datadir}}/mysql/{{.port}}/data/mysql.pid
 character_set_server = utf8mb4
 transaction_isolation = READ-COMMITTED
 sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'
-log_error = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/log/mysqld.log
+log_error = {{.datadir}}/mysql/{{.port}}/log/mysqld.log
 skip-external-locking
 
 #connection
@@ -46,21 +46,21 @@ max_allowed_packet = 64M
 skip_name_resolve
 
 #session
-read_buffer_size = {{.DynamicVariables.read_buffer_size}}
-read_rnd_buffer_size = {{.DynamicVariables.read_rnd_buffer_size}}
-sort_buffer_size = {{.DynamicVariables.sort_buffer_size}}
-join_buffer_size = {{.DynamicVariables.join_buffer_size}}
-
+read_buffer_size = {{.read_buffer_size}}
+read_rnd_buffer_size = {{.read_rnd_buffer_size}}
+sort_buffer_size = {{.sort_buffer_size}}
+join_buffer_size = {{.join_buffer_size}}
 
 #innodb
-innodb_buffer_pool_size = {{.DynamicVariables.innodb_buffer_pool_size}}
-innodb_log_file_size = {{.DynamicVariables.innodb_log_file_size}}
-innodb_flush_log_at_trx_commit = 1{{if or (.DynamicVariables.MySQL57) (.DynamicVariables.MySQL80)}}
+innodb_buffer_pool_size = {{.innodb_buffer_pool_size}}
+innodb_log_file_size = {{.innodb_log_file_size}}
+innodb_flush_log_at_trx_commit = 1{{if or (.mysqld57) (.mysqld80)}}
 innodb_undo_tablespaces = 2
 innodb_max_undo_log_size = 1024M
 innodb_undo_log_truncate = 1
-{{end}}innodb_io_capacity = {{.DynamicVariables.innodb_io_capacity}}
-innodb_io_capacity_max = {{.DynamicVariables.innodb_io_capacity_max}}
+innodb_page_cleaners = 8
+{{end}}innodb_io_capacity = {{.innodb_io_capacity}}
+innodb_io_capacity_max = {{.innodb_io_capacity_max}}
 innodb_data_file_path = ibdata1:1G:autoextend
 innodb_flush_method = O_DIRECT
 innodb_purge_threads = 4
@@ -69,18 +69,17 @@ innodb_buffer_pool_load_at_startup = 1
 innodb_buffer_pool_dump_at_shutdown = 1
 innodb_read_io_threads = 8
 innodb_write_io_threads = 8
-innodb_flush_neighbors = {{.DynamicVariables.innodb_flush_neighbors}}
-innodb_print_all_deadlocks = 1
-loose-innodb_file_format = Barracuda
+innodb_flush_neighbors = {{.innodb_flush_neighbors}}
 innodb_checksum_algorithm = crc32
-innodb_strict_mode = ON
-loose-innodb_large_prefix = ON
+innodb_strict_mode = ON{{if or (.mysqld56) (.mysqld57)}}
+innodb_file_format = Barracuda
+innodb_large_prefix = ON{{end}}
 
 
 #replication
-server_id = {{.DynamicVariables.server_id}}
-log_bin = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/log/mysql-bin
-relay_log = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/log/relay-bin
+server_id = {{.server_id}}
+log_bin = {{.datadir}}/mysql/{{.port}}/log/mysql-bin
+relay_log = {{.datadir}}/mysql/{{.port}}/log/relay-bin
 sync_binlog = 1
 binlog_format = ROW
 master_info_repository = TABLE
@@ -103,7 +102,7 @@ rpl_semi_sync_master_timeout = 1000
 gtid_mode = ON
 enforce_gtid_consistency = 1
 
-{{if or (.DynamicVariables.MySQL57) (.DynamicVariables.MySQL80)}}
+{{if or (.mysqld57) (.mysqld80)}}
 #multi-threaded slave
 slave-parallel-type = LOGICAL_CLOCK
 slave-parallel-workers = 8
@@ -113,9 +112,13 @@ slave_preserve_commit_order = 1
 #slow log 
 slow_query_log = ON
 long_query_time = 0.5
-slow_query_log_file = {{.DynamicVariables.datadir}}/mysql/{{.DynamicVariables.port}}/log/slow.log
+slow_query_log_file = {{.datadir}}/mysql/{{.port}}/log/slow.log
 
-{{if or (.DynamicVariables.MySQL56) (.DynamicVariables.MySQL57)}}
+#general log
+general_log = OFF
+general_log_file = {{.datadir}}/mysql/{{.port}}/log/general.log
+
+{{if or (.mysqld56) (.mysqld57)}}
 #query cache
 query_cache_type = 0
 query_cache_size = 0
@@ -130,14 +133,13 @@ table_definition_cache = 65535
 table_open_cache_instances = 64
 event_scheduler = 1
 eq_range_index_dive_limit = 200
-log_bin_trust_function_creators = 1{{if or (.DynamicVariables.MySQL57) (.DynamicVariables.MySQL80)}}
-innodb_page_cleaners = 8
-log_timestamps = system
 loose-innodb_numa_interleave = ON
+log_bin_trust_function_creators = 1{{if or (.mysqld57) (.mysqld80)}}
+log_timestamps = system
 {{end}}
-
-{{range  $k, $v := .ExtraVariables_57}}{{ $k }} = {{$v}}{{end}}
 `
+
+//{{range  $k, $v := .ExtraVariables_57}}{{ $k }} = {{$v}}{{end}}
 
 func GenerateMyCnf(args map[string]string) (string) {
 	serverId := getServerId()
@@ -151,39 +153,45 @@ func GenerateMyCnf(args map[string]string) (string) {
 	}
 	var mycnfTemplate = template.Must(template.New("mycnf").Parse(config))
 
-	type Variable struct {
-		DynamicVariables  map[string]interface{}
-		ExtraVariables_57 map[string]interface{}
+	//type Variable struct {
+	//	DynamicVariables  map[string]interface{}
+	//	//ExtraVariables_57 map[string]interface{}
+	//}
+
+	dynamicvariables:= make(map[string]interface{})
+	dynamicvariables["basedir"] = args["basedir"]
+	dynamicvariables["datadir"] = args["datadir"]
+	dynamicvariables["port"] = args["port"]
+	dynamicvariables["innodb_buffer_pool_size"] = strconv.Itoa(getInnodbBufferPoolSize(totalMem)) + "M"
+	dynamicvariables["server_id"] = serverId
+	dynamicvariables["innodb_flush_neighbors"] = "0"
+	dynamicvariables["innodb_io_capacity"] = "1000"
+	dynamicvariables["innodb_io_capacity_max"] = "2500"
+	if args["mysqld_version"] == "5.6" {
+		dynamicvariables["mysqld56"] = true
+	} else if args["mysqld_version"] == "5.7" {
+		dynamicvariables["mysqld57"] = true
+	} else {
+		dynamicvariables["mysqld80"] = true
 	}
-	var variable Variable
-	variable.DynamicVariables = make(map[string]interface{})
-	variable.DynamicVariables["basedir"] = args["basedir"]
-	variable.DynamicVariables["datadir"] = args["datadir"]
-	variable.DynamicVariables["port"] = args["port"]
-	variable.DynamicVariables["innodb_buffer_pool_size"] = strconv.Itoa(getInnodbBufferPoolSize(totalMem)) + "M"
-	variable.DynamicVariables["server_id"] = serverId
-	variable.DynamicVariables["innodb_flush_neighbors"] = "0"
-	variable.DynamicVariables["innodb_io_capacity"] = "1000"
-	variable.DynamicVariables["innodb_io_capacity_max"] = "2500"
-	variable.DynamicVariables["MySQL80"] = true
 	if args["ssd"] == "0" {
-		variable.DynamicVariables["innodb_flush_neighbors"] = "1"
-		variable.DynamicVariables["innodb_io_capacity"] = "200"
-		variable.DynamicVariables["innodb_io_capacity_max"] = "500"
+		dynamicvariables["innodb_flush_neighbors"] = "1"
+		dynamicvariables["innodb_io_capacity"] = "200"
+		dynamicvariables["innodb_io_capacity_max"] = "500"
 	}
 
 	//Assume read_rnd_buffer_size==sort_buffer_size==join_buffer_size==read_buffer_size*2
 	read_buffer_size := getReadBufferSize(totalMem)
-	variable.DynamicVariables["read_buffer_size"] = strconv.Itoa(read_buffer_size) + "M"
-	variable.DynamicVariables["read_rnd_buffer_size"] = strconv.Itoa(read_buffer_size*2) + "M"
-	variable.DynamicVariables["sort_buffer_size"] = strconv.Itoa(read_buffer_size*2) + "M"
-	variable.DynamicVariables["join_buffer_size"] = strconv.Itoa(read_buffer_size*2) + "M"
-	variable.DynamicVariables["innodb_log_file_size"] = strconv.Itoa(getInnodbLogFileSize(totalMem)) + "M"
+	dynamicvariables["read_buffer_size"] = strconv.Itoa(read_buffer_size) + "M"
+	dynamicvariables["read_rnd_buffer_size"] = strconv.Itoa(read_buffer_size*2) + "M"
+	dynamicvariables["sort_buffer_size"] = strconv.Itoa(read_buffer_size*2) + "M"
+	dynamicvariables["join_buffer_size"] = strconv.Itoa(read_buffer_size*2) + "M"
+	dynamicvariables["innodb_log_file_size"] = strconv.Itoa(getInnodbLogFileSize(totalMem)) + "M"
 	//variable.ExtraVariables_57=make(map[string]string)
 	//variable.ExtraVariables_57["basedir"] = "/usr/local/mysql"
 	b := bytes.NewBuffer(make([]byte, 0))
 	w := bufio.NewWriter(b)
-	mycnfTemplate.Execute(w, variable)
+	mycnfTemplate.Execute(w, dynamicvariables)
 	w.Flush()
 
 	return b.String()
@@ -259,18 +267,17 @@ func formatMem(inputMem string) (totalMem int) {
 	return
 }
 
-
-func main() {
-
-	mycnf_args := make(map[string]string)
-	mycnf_args["basedir"] = "/usr/local/mysql"
-	mycnf_args["datadir"] = "/data"
-	mycnf_args["port"] = strconv.Itoa(3306)
-	mycnf_args["memory"] = "10G"
-		mycnf_args["ssd"] = "0"
-
-	mycnf := GenerateMyCnf(mycnf_args)
-	fmt.Println(mycnf)
-
-
-}
+//func main() {
+//
+//	mycnf_args := make(map[string]string)
+//	mycnf_args["basedir"] = "/usr/local/mysql"
+//	mycnf_args["datadir"] = "/data"
+//	mycnf_args["port"] = strconv.Itoa(3306)
+//	mycnf_args["memory"] = "10G"
+//	mycnf_args["mysqld_version"] = "5.6"
+//	mycnf_args["ssd"] = "0"
+//
+//	mycnf := GenerateMyCnf(mycnf_args)
+//	fmt.Println(mycnf)
+//
+//}
