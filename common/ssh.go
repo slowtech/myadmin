@@ -9,10 +9,14 @@ import (
 	"os"
 	"path"
 	"strings"
-	"time"
 )
 
-func GetClient(hostname string,port string,username string,password string)(*ssh.Client){
+
+type Host struct {
+	Connection *ssh.Client
+}
+
+func (host *Host)Init(hostname string,port string,username string,password string) {
 	config := &ssh.ClientConfig{
 		User: username,
 		Auth: []ssh.AuthMethod{ssh.Password(password)},
@@ -21,15 +25,12 @@ func GetClient(hostname string,port string,username string,password string)(*ssh
 		},
 	}
 	hostaddress := strings.Join([]string{hostname, port}, ":")
-	Connection, err := ssh.Dial("tcp", hostaddress, config)
+	var err error
+	host.Connection, err = ssh.Dial("tcp", hostaddress, config)
 	if err != nil {
 		panic(err.Error())
 	}
-	return Connection
-}
 
-type Host struct {
-	Connection *ssh.Client
 }
 
 func (host *Host) Run(cmd string) {
@@ -57,7 +58,7 @@ func (host *Host) Scp(sourcePath string,destPath string)  {
 	destDir := path.Dir(destPath)
 
 	go func() {
-		Buf := make([]byte, 1024*1024*10)
+		Buf := make([]byte, 1024)
 		w, _ := session.StdinPipe()
 		defer w.Close()
 		f, _ := os.Open(sourcePath)
@@ -66,7 +67,7 @@ func (host *Host) Scp(sourcePath string,destPath string)  {
 		for {
 			n, err := f.Read(Buf)
 			fmt.Fprint(w, string(Buf[:n]))
-			time.Sleep(time.Second*1)
+			//time.Sleep(time.Second*1)
 			if err != nil {
 				if err == io.EOF {
 					return
