@@ -28,7 +28,7 @@ func init() {
 
 func DeployReplication(cmd *cobra.Command, args []string) {
 	var host common.Host
-	host.Connection = common.GetClient("192.168.244.30","22","root","123456")
+	host.Init("192.168.244.30","22","root","123456")
 	host.Run("df -h")
 	t1 := time.Now().Unix()
 	host.Scp("/usr/local/goland-2018.3.1.tar.gz","/tmp/goland-2018.3.1.tar.gz")
