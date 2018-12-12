@@ -6,14 +6,23 @@ import "fmt"
 type master struct {
 	repl_user     string
 	repl_password string
-	slave         string
+	slaves         [] string
 }
 
 func (p *master) createReplUser() {
-	createUserSQL := fmt.Sprintf("CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", p.repl_user, p.slave, p.repl_user)
-	fmt.Println(createUserSQL)
-	grantSQL := fmt.Sprintf("GRANT REPLICATION SLAVE ON *.* TO '%s'@'%s'", p.repl_user, p.slave)
-	fmt.Println(grantSQL)
+	for _,each_slave := range p.slaves {
+		createUserSQL := fmt.Sprintf("CREATE USER '%s'@'%s' IDENTIFIED BY '%s'", p.repl_user, each_slave, p.repl_user)
+		fmt.Println(createUserSQL)
+		grantSQL := fmt.Sprintf("GRANT REPLICATION SLAVE ON *.* TO '%s'@'%s'", p.repl_user, each_slave)
+		fmt.Println(grantSQL)
+	}
+}
+
+func CreateReplUser(repl_user string,repl_password string,slaves []string) {
+	var newmaster = & master {
+		repl_user,repl_password,slaves,
+	}
+	newmaster.createReplUser()
 }
 
 type slave struct {
@@ -56,6 +65,7 @@ func (p *slave)checkSlaveStatus() {
 	fmt.Println(sql)
 }
 
+
 func SetupReplication(master_host string,master_port int,repl_user string,repl_password string,master_log_file string,master_log_pos  int64,gtid bool,gtid_purged string) {
 	var newslave = & slave {
 		master_host,master_port,repl_user,repl_password,master_log_file,master_log_pos,gtid,gtid_purged,
@@ -66,8 +76,8 @@ func SetupReplication(master_host string,master_port int,repl_user string,repl_p
 }
 
 func main() {
+	CreateReplUser("repl","repl123",[]string{"192.168.244.10","192.168.244.20"})
 	SetupReplication("192.168.244.10",3306,"repl","repl123","mysql-bin.00001",4,false,"")
 	SetupReplication("192.168.244.10",3306,"repl","repl123","",0,true,"")
 	SetupReplication("192.168.244.10",3306,"repl","repl123","",0,true,"23423sdsdfdsf")
-
 }
