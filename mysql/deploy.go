@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func DeployInstance(mysqldBinary string, configFile string) {
+func DeployInstance(mysqldBinary string, configFile string,initialRootPass string) {
 
 	if ! common.FileExists(mysqldBinary, "file") {
 		log.Fatalf("%s: no such file\n", mysqldBinary)
@@ -173,7 +173,7 @@ func DeployInstance(mysqldBinary string, configFile string) {
 	temporaryPasswordLineSplit := strings.Split(temporaryPasswordLine, " ")
 
 	temporaryPassword := temporaryPasswordLineSplit[len(temporaryPasswordLineSplit)-1]
-	out, err = resetPassword(temporaryPassword, variables["socket"])
+	out, err = resetPassword(temporaryPassword, variables["socket"],initialRootPass)
 	if err != nil {
 		log.Warnf("Fail to reset root password: %s, Do it manually", out)
 	}
@@ -252,13 +252,16 @@ func checkInstanceAlive(pidfile string, timeout int) bool {
 	return false
 }
 
-func resetPassword(initialPassword string, socket string) (string, error) {
+func resetPassword(initialPassword string, socket string,initialRootPass string) (string, error) {
 	connectUrl := fmt.Sprintf("%s:%s@unix(%s)/mysql?charset=utf8", "root", initialPassword, socket)
 	db, err := sqlx.Open(`mysql`, connectUrl)
 	if err != nil {
 		return "", err
 	}
-	randomPassword := common.GenerateRandomPassword(8)
+	randomPassword := initialPassword
+	if len(initialPassword) == 0 {
+		randomPassword = common.GenerateRandomPassword(8)
+	}
 	alterPassSQL := fmt.Sprintf("alter user root@localhost identified by '%s'", randomPassword)
 	_, err = db.Query(alterPassSQL)
 	if err != nil {
