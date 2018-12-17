@@ -232,3 +232,11 @@ func IsEmpty(dir string) (bool) {
 	}
 	return false
 }
+
+func CheckIP(ip string) (bool) {
+	trial := net.ParseIP(ip)
+	if trial.To4() == nil {
+		return false
+	}
+	return true
+}
