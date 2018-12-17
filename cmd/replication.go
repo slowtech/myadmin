@@ -26,7 +26,7 @@ var (
 func init() {
 	deployCmd.AddCommand(ReplicationCmd)
 	ReplicationCmd.Flags().StringVarP(&deploy_repl_cnf, "defaults-file", "c", "", "The default config file")
-	ReplicationCmd.Flags().StringVarP(&deploy_repl_binary, "binary", "b", "", "The MySQL Binary tarball. If not specified, Assume the binary files are already in basedir")
+	ReplicationCmd.Flags().StringVarP(&deploy_repl_binary, "binary", "b", "", "The MySQL Binary tarball.")
 	ReplicationCmd.Flags().StringVarP(&deploy_repl_master, "master", "m", "", "The Master Address ")
 	ReplicationCmd.Flags().StringVarP(&deploy_repl_slave, "slave", "s", "", "The Slave Address")
 	ReplicationCmd.MarkFlagRequired("defaults-file")
