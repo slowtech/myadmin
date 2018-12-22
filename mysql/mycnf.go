@@ -87,7 +87,7 @@ relay_log_info_repository = TABLE
 relay_log_recovery = ON
 log_slave_updates = ON
 expire_logs_days = 7
-slave-rows-search-algorithms = 'INDEX_SCAN,HASH_SCAN'
+slave_rows_search_algorithms = 'INDEX_SCAN,HASH_SCAN'
 skip-slave-start
 slave_net_timeout = 60
 binlog_error_action = ABORT_SERVER
