@@ -42,7 +42,7 @@ func (host *Host) Run(cmd string) {
 	var buff bytes.Buffer
 	session.Stdout = &buff
 	if err := session.Run(cmd); err != nil {
-		panic(err.Error())
+	     panic(err.Error())
 	}
 	fmt.Println(buff.String())
 }
